@@ -41,20 +41,21 @@ export default function ActorPicker({ users }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  // Auto-select a sensible default the first time we see users: admin >
-  // supervisor > siu_investigator > first. The assistant works for any user
-  // with at least one app; an admin has all of them.
+  // Auto-select a sensible default when there's no actor OR the stored one is
+  // stale (not in the current user list — e.g. the ephemeral DB was re-seeded
+  // with new ids, which otherwise causes "Unknown user_id"). Priority: admin >
+  // supervisor > siu_investigator > first.
   useEffect(() => {
-    if (!actorId && users.length > 0) {
-      const chosen =
-        users.find((u) => u.roles.includes('admin')) ??
-        users.find((u) => u.roles.includes('supervisor')) ??
-        users.find((u) => u.roles.includes('siu_investigator')) ??
-        users[0]
-      if (chosen) {
-        setActorId(chosen.id)
-        localStorage.setItem(ACTOR_KEY, chosen.id)
-      }
+    if (users.length === 0) return
+    if (actorId && users.some((u) => u.id === actorId)) return
+    const chosen =
+      users.find((u) => u.roles.includes('admin')) ??
+      users.find((u) => u.roles.includes('supervisor')) ??
+      users.find((u) => u.roles.includes('siu_investigator')) ??
+      users[0]
+    if (chosen) {
+      setActorId(chosen.id)
+      localStorage.setItem(ACTOR_KEY, chosen.id)
     }
   }, [actorId, users])
 

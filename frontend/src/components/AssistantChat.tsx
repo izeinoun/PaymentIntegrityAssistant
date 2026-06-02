@@ -40,6 +40,7 @@ export default function AssistantChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [stream, setStream] = useState<StreamItem[]>([])
   const [awaiting, setAwaiting] = useState<Awaiting | null>(null)
+  const [suggestions, setSuggestions] = useState<string[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -50,7 +51,7 @@ export default function AssistantChat() {
   }, [messages, stream, awaiting, loading])
 
   async function send(next: Message[]) {
-    setLoading(true); setError(''); setStream([]); setAwaiting(null)
+    setLoading(true); setError(''); setStream([]); setAwaiting(null); setSuggestions([])
     setMessages(next)
     try {
       const res = await fetch(`${API_BASE_URL}/api/assistant/chat/stream`, {
@@ -108,6 +109,7 @@ export default function AssistantChat() {
         break
       case 'final':
         setMessages(evt.messages); setStream([]); setAwaiting(null)
+        setSuggestions(Array.isArray(evt.suggestions) ? evt.suggestions : [])
         break
       case 'awaiting_user':
         setMessages(evt.messages); setStream([])
@@ -203,6 +205,18 @@ export default function AssistantChat() {
           {error && (
             <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" /> <span>{error}</span>
+            </div>
+          )}
+
+          {/* Suggested follow-ups (from the model, stripped server-side) */}
+          {!loading && !awaiting && suggestions.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1">
+              {suggestions.map((s) => (
+                <button key={s} onClick={() => send([...messages, { role: 'user', content: s }])}
+                  className="text-xs px-3 py-1.5 rounded-full border border-[#FE017D]/30 bg-[#FE017D]/5 text-[#be185d] hover:bg-[#FE017D]/10 transition-colors">
+                  {s}
+                </button>
+              ))}
             </div>
           )}
         </div>

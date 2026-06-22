@@ -15,6 +15,9 @@ import DOMPurify from 'dompurify'
 const HTML_CARD = /<(div|table|section|article|figure|main|header|h[1-6])[\s/>]/i
 import { Bot, Send, Wrench, AlertTriangle, Loader2 } from 'lucide-react'
 import { API_BASE_URL, ACTOR_KEY, DEMO_TOKEN_KEY } from '../api/client'
+import Launchpad from './Launchpad'
+import ViewSurface from './ViewSurface'
+import type { Directive } from '../api/types'
 
 // ── Anthropic message types (minimal) ─────────────────────────────────────
 type ContentBlock =
@@ -44,11 +47,24 @@ export default function AssistantChat() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // The surfaced interactive view (launchpad pick or agent present_view), shown
+  // inline above the conversation. Null = prose-only mode.
+  const [activeView, setActiveView] = useState<Directive | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, stream, awaiting, loading])
+
+  // A view surfaces at the TOP of the column — bring it into view when it changes.
+  useEffect(() => {
+    if (activeView) scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [activeView])
+
+  function dispatchView(d: Directive) { setActiveView(d) }
+  function openCase(caseId: number) {
+    setActiveView({ view: 'case', params: { case_id: caseId }, caption: 'Case' })
+  }
 
   async function send(next: Message[]) {
     setLoading(true); setError(''); setStream([]); setAwaiting(null); setSuggestions([])
@@ -111,6 +127,10 @@ export default function AssistantChat() {
         setMessages(evt.messages); setStream([]); setAwaiting(null)
         setSuggestions(Array.isArray(evt.suggestions) ? evt.suggestions : [])
         break
+      case 'directive':
+        // Agent asked us to render an interactive view inline.
+        if (evt.view) setActiveView({ view: evt.view, params: evt.params || {}, caption: evt.caption })
+        break
       case 'awaiting_user':
         setMessages(evt.messages); setStream([])
         setAwaiting({ question: evt.question, options: evt.options || [], tool_use_id: evt.tool_use_id })
@@ -156,14 +176,26 @@ export default function AssistantChat() {
     <div className="flex flex-col flex-1 min-h-0">
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-3">
-          {empty && (
-            <div className="text-center mt-16">
+          {/* Anticipatory launchpad — always available at the top. */}
+          <Launchpad onOpen={dispatchView} />
+
+          {/* Surfaced interactive view (launchpad pick or agent present_view). */}
+          {activeView && (
+            <ViewSurface
+              directive={activeView}
+              onOpenCase={openCase}
+              onClose={() => setActiveView(null)}
+            />
+          )}
+
+          {empty && !activeView && (
+            <div className="text-center mt-6">
               <div className="w-12 h-12 rounded-2xl bg-[#FE017D]/10 flex items-center justify-center mx-auto mb-3">
                 <Bot className="w-6 h-6 text-[#FE017D]" />
               </div>
               <h1 className="text-lg font-semibold text-gray-900">OPA Assistant</h1>
-              <p className="text-sm text-gray-500 mt-1">Read-only answers from your live payment-integrity data.</p>
-              <div className="mt-6 grid sm:grid-cols-2 gap-2 max-w-xl mx-auto">
+              <p className="text-sm text-gray-500 mt-1">Jump in above, or ask anything about your payment-integrity data.</p>
+              <div className="mt-5 grid sm:grid-cols-2 gap-2 max-w-xl mx-auto">
                 {SUGGESTIONS.map((s) => (
                   <button key={s} onClick={() => send([...messages, { role: 'user', content: s }])}
                     className="text-left text-xs px-3 py-2.5 rounded-lg border border-gray-200 bg-white hover:border-[#FE017D]/40 hover:bg-[#FE017D]/5 text-gray-600">

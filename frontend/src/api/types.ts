@@ -53,24 +53,67 @@ export interface FindingLite {
   finding_type?: string | null
   description?: string | null
   overpayment_amount?: number | null
+  confidence_score?: number | null
+  evidence_json?: string | null
   disposition_status?: string | null
 }
+export interface EraTxLite {
+  id?: string
+  era_number?: string
+  payment_amount?: number | null
+  claim_count?: number | null
+  payment_date?: string | null
+}
+export interface DisputeLite {
+  id?: string
+  dispute_date?: string
+  reason?: string
+  outcome?: string | null
+  response_due?: string | null
+}
+export interface NoticeLite {
+  id?: string
+  sent_date?: string
+  amount_demanded?: number | null
+  status?: string
+  delivery_method?: string
+}
+export interface NoteLite {
+  id?: string
+  body: string
+  created_at?: string
+  author?: { full_name?: string | null } | null
+}
+export interface DocumentLite {
+  id: string
+  filename: string
+  file_size_kb?: number | null
+  kind?: string | null
+  uploaded_at?: string | null
+}
+
 // Mirrors the parts of CaseDetail the cockpit renders. Findings live under
 // claim.findings; provider is rendering_provider / provider_org_name.
 export interface CaseDetailLite {
   id: number
+  case_id?: string | null   // UUID — used for the documents lookup
   case_number: string
   status: string
   priority?: string | null
   amount_at_risk?: number | null
   assignee?: { id: string; full_name: string } | null
   claim?: {
+    id?: string
     member?: { name?: string | null } | null
     rendering_provider?: { name?: string | null } | null
     provider_org_name?: string | null
     findings?: FindingLite[]
+    era_transactions?: EraTxLite[]
   } | null
   suggested_decision?: SuggestedDecision | null
+  disputes?: DisputeLite[]
+  notices?: NoticeLite[]
+  case_notes?: NoteLite[]
   opened_at?: string | null
   deadline?: string | null
 }

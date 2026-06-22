@@ -1,6 +1,6 @@
 import { client } from './client'
 import type {
-  User, CaseListResponse, CaseDetailLite, MyDashboard,
+  User, CaseListResponse, CaseDetailLite, MyDashboard, DocumentLite, NoteLite,
 } from './types'
 
 // Worklist scope → the unified /api/cases assignee filter (same mapping PayGuard
@@ -60,4 +60,35 @@ export const api = {
     const { data } = await client.get<MyDashboard>('/api/dashboard/me', { params: { period } })
     return data
   },
+
+  // Case-level documents (Evidence tab). caseUuid is CaseDetail.case_id.
+  async caseDocuments(caseUuid: string): Promise<DocumentLite[]> {
+    const { data } = await client.get<DocumentLite[]>('/api/documents', { params: { case_id: caseUuid } })
+    return data
+  },
+
+  // ── Inline write actions (the human clicks; the LLM never mutates) ──────
+  async addCaseNote(caseId: number, body: string): Promise<NoteLite> {
+    const { data } = await client.post<NoteLite>(`/api/cases/${caseId}/notes`, { body })
+    return data
+  },
+  async assignCase(caseId: number, analystId: string | null): Promise<CaseDetailLite> {
+    const { data } = await client.patch<CaseDetailLite>(`/api/cases/${caseId}/assign`, { analyst_id: analystId })
+    return data
+  },
+  async transitionCase(caseId: number, toStatus: string, reason?: string): Promise<CaseDetailLite> {
+    const { data } = await client.post<CaseDetailLite>(`/api/cases/${caseId}/transition`, { to_status: toStatus, reason })
+    return data
+  },
+  async escalateCase(caseId: number, reason: string): Promise<void> {
+    await client.post(`/api/cases/${caseId}/escalate`, { reason })
+  },
+  async rerunDetectors(caseId: number): Promise<void> {
+    await client.post(`/api/cases/${caseId}/rerun-detectors`)
+  },
+}
+
+// Direct download URL for a document (opens the backend stream in a new tab).
+export function documentDownloadUrl(docId: string): string {
+  return `${client.defaults.baseURL}/api/documents/${docId}/download`
 }

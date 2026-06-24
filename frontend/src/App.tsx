@@ -18,7 +18,7 @@ export default function App() {
           </div>
           <div className="leading-tight">
             <p className="text-sm font-semibold text-gray-900">OPA Assistant</p>
-            <p className="text-[10px] text-gray-400">Read-only · answers from your data</p>
+            <p className="text-[10px] text-gray-400">Answers + actions · confirms before changes</p>
           </div>
         </div>
         <div className="flex items-center gap-3">

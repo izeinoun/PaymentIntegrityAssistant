@@ -99,11 +99,14 @@ export interface CaseDetailLite {
   case_id?: string | null   // UUID — used for the documents lookup
   case_number: string
   status: string
+  siu_frozen?: boolean | null
   priority?: string | null
   amount_at_risk?: number | null
   assignee?: { id: string; full_name: string } | null
   claim?: {
     id?: string
+    total_billed?: number | null
+    total_paid?: number | null
     member?: { name?: string | null } | null
     rendering_provider?: { name?: string | null } | null
     provider_org_name?: string | null
@@ -111,11 +114,50 @@ export interface CaseDetailLite {
     era_transactions?: EraTxLite[]
   } | null
   suggested_decision?: SuggestedDecision | null
+  guidance?: CaseGuidance | null
   disputes?: DisputeLite[]
   notices?: NoticeLite[]
   case_notes?: NoteLite[]
   opened_at?: string | null
   deadline?: string | null
+}
+
+// ── Workflow guidance (mirror of server/app/schemas/guidance.py) ───────────
+export type LifecycleStepState = 'completed' | 'current' | 'blocked' | 'upcoming' | 'skipped'
+export interface LifecycleStep {
+  key: string
+  label: string
+  state: LifecycleStepState
+  detail?: string | null
+  conditional?: boolean
+}
+export interface NextAction {
+  kind: string
+  label: string
+  explanation: string
+  actionable?: boolean
+  target?: { view?: string; params?: Record<string, any> }
+}
+export interface Blocker { type: string; count: number; message: string }
+export interface RoleContext { is_owner: boolean; role: string; supervisor_gate: boolean }
+export type ActionStyle = 'primary' | 'default' | 'caution'
+export interface CaseAction {
+  kind: string
+  label: string
+  style: ActionStyle
+  enabled: boolean
+  disabled_reason?: string | null
+  needs_input?: 'reason' | 'amount' | 'amount_reason' | null
+  recommended: boolean
+}
+export interface CaseGuidance {
+  lifecycle: LifecycleStep[]
+  current_step?: string | null
+  next_action?: NextAction | null
+  actions: CaseAction[]
+  blockers: Blocker[]
+  remaining_summary: string
+  role_context: RoleContext
 }
 
 export interface MyDashboard {

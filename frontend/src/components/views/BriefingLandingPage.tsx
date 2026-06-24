@@ -1,9 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { TrendingUp, TrendingDown, Loader2, AlertCircle } from 'lucide-react'
 import { api } from '../../api'
-import type { DailyBriefing } from '../../api/types'
-
-const BRAND = '#FE017D'
 
 function money(n?: number | null): string {
   if (n == null) return '—'

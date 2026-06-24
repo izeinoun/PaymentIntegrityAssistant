@@ -3,10 +3,6 @@ import type {
   User, CaseListResponse, CaseDetailLite, MyDashboard, DocumentLite, NoteLite, EvidenceFinding, DailyBriefing,
 } from './types'
 
-// Worklist scope → the unified /api/cases assignee filter (same mapping PayGuard
-// uses). 'mine' needs the current actor id (X-User-Id), read from localStorage.
-import { ACTOR_KEY } from './client'
-
 export interface CaseQuery {
   scope?: 'mine' | 'unassigned' | 'all'
   status?: string
@@ -24,8 +20,8 @@ function caseParams(q: CaseQuery): Record<string, any> {
   if (q.priority) p.priority = q.priority
   if (q.overdue) p.overdue_only = true
   if (q.scope === 'mine') {
-    const me = localStorage.getItem(ACTOR_KEY)
-    if (me) p.assignee_id = me
+    // JWT auth: backend identifies user from token
+    p.scope = 'mine_or_unassigned'
   } else if (q.scope === 'unassigned') {
     p.assignee_id = '__unassigned__'
   }
@@ -75,6 +71,33 @@ export const api = {
   // Evidence findings from document analysis. claimId is CaseDetail.claim.id.
   async caseEvidenceFindings(claimId: string): Promise<EvidenceFinding[]> {
     const { data } = await client.get<EvidenceFinding[]>(`/api/claims/${claimId}/evidence-findings`)
+    return data
+  },
+
+  // Upload a document to a case for evidence analysis
+  async uploadCaseDocument(
+    claimId: string,
+    file: File,
+    kind: string = 'supporting',
+  ): Promise<DocumentLite> {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('claim_id', claimId)
+    fd.append('kind', kind)
+    const { data } = await client.post<DocumentLite>('/api/documents', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 90_000,
+    })
+    return data
+  },
+
+  // Trigger evidence analysis for a claim
+  async analyzeEvidenceFinding(claimId: string): Promise<EvidenceFinding[]> {
+    const { data } = await client.post<EvidenceFinding[]>(
+      `/api/claims/${claimId}/validate-evidence`,
+      {},
+      { timeout: 90_000 },
+    )
     return data
   },
 

@@ -9,7 +9,6 @@ import {
 import { api } from '../api'
 import type { CaseQuery } from '../api'
 import type { Directive } from '../api/types'
-import { ACTOR_KEY } from '../api/client'
 
 type Spec = {
   label: string
@@ -79,7 +78,7 @@ interface Props {
 
 export default function Launchpad({ onOpen }: Props) {
   const usersQ = useQuery({ queryKey: ['users'], queryFn: api.listUsers })
-  const actorId = localStorage.getItem(ACTOR_KEY) ?? ''
+  const actorId = localStorage.getItem('assistant_user_id') ?? ''
   const me = usersQ.data?.find((u) => u.id === actorId)
   const role = primaryRole(me?.roles)
   const isSupervisor = role === 'supervisor' || role === 'admin'

@@ -6,7 +6,6 @@ import {
   ChevronDown, Shield, ShieldCheck, ShieldAlert, User as UserIcon,
 } from 'lucide-react'
 import type { User } from '../api/types'
-import { ACTOR_KEY } from '../api/client'
 
 interface Props {
   users: User[]
@@ -37,7 +36,7 @@ function roleIcon(role: string): typeof UserIcon {
 }
 
 export default function ActorPicker({ users }: Props) {
-  const [actorId, setActorId] = useState<string>(() => localStorage.getItem(ACTOR_KEY) ?? '')
+  const [actorId, setActorId] = useState<string>(() => localStorage.getItem('assistant_user_id') ?? '')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -55,7 +54,7 @@ export default function ActorPicker({ users }: Props) {
       users[0]
     if (chosen) {
       setActorId(chosen.id)
-      localStorage.setItem(ACTOR_KEY, chosen.id)
+      localStorage.setItem('assistant_user_id', chosen.id)
     }
   }, [actorId, users])
 
@@ -70,7 +69,7 @@ export default function ActorPicker({ users }: Props) {
 
   const onChange = (id: string) => {
     setActorId(id)
-    localStorage.setItem(ACTOR_KEY, id)
+    localStorage.setItem('assistant_user_id', id)
     setOpen(false)
     window.location.reload() // reset React Query caches under the new identity
   }

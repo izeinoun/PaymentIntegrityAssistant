@@ -3,13 +3,12 @@
 // action bar performs safe writes against the existing endpoints; the human
 // clicks, the LLM never mutates. Heavier flows (send notice, close, approve)
 // still live on the full PayGuard page.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, Loader2, Download, Send, ChevronDown, Check } from 'lucide-react'
+import { ExternalLink, Loader2, Download, Send, ChevronDown, Check, UploadCloud } from 'lucide-react'
 import { api, documentDownloadUrl } from '../../api'
 import type { CaseDetailLite, CaseAction, FindingLite } from '../../api/types'
 import { appUrl } from '../../config/appUrls'
-import { ACTOR_KEY } from '../../api/client'
 import CaseLifecycleRail from '../CaseLifecycleRail'
 import CockpitActionBar from '../CockpitActionBar'
 import type { CockpitActionReq } from '../../lib/nextAction'
@@ -61,7 +60,7 @@ interface Props {
 }
 
 export default function CaseCockpit({ caseId, onAction, busy }: Props) {
-  const actorId = localStorage.getItem(ACTOR_KEY) ?? ''
+  const actorId = localStorage.getItem('assistant_user_id') ?? ''
   const [tab, setTab] = useState<TabKey>('overview')
 
   const { data: c, isLoading, error } = useQuery({
@@ -267,8 +266,13 @@ function NotesTab({ caseId, notes }: { caseId: number; notes: { id?: string; bod
 
 
 function EvidenceTab({ c }: { c: CaseDetailLite }) {
+  const qc = useQueryClient()
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+
   const caseUuid = c.case_id ?? null
   const claimId = c.claim?.id ?? null
+
   const { data: docs, isLoading: docsLoading, error: docsError } = useQuery({
     queryKey: ['cockpit-docs', caseUuid],
     queryFn: () => api.caseDocuments(caseUuid as string),
@@ -278,7 +282,20 @@ function EvidenceTab({ c }: { c: CaseDetailLite }) {
     queryKey: ['cockpit-evidence-findings', claimId],
     queryFn: () => api.caseEvidenceFindings(claimId as string),
     enabled: !!claimId,
+    refetchInterval: (data) => (Array.isArray(data) && data.length > 0 ? false : 5_000),
   })
+
+  const uploadM = useMutation({
+    mutationFn: async (file: File) => {
+      if (!claimId) throw new Error('No claim ID')
+      await api.uploadCaseDocument(claimId, file, 'supporting')
+      qc.invalidateQueries({ queryKey: ['cockpit-docs', caseUuid] })
+      // Trigger analysis after upload
+      await api.analyzeEvidenceFinding(claimId)
+      qc.invalidateQueries({ queryKey: ['cockpit-evidence-findings', claimId] })
+    },
+  })
+
   const documents = docs ?? []
   const evidenceFindings = findings ?? []
 
@@ -286,6 +303,14 @@ function EvidenceTab({ c }: { c: CaseDetailLite }) {
     critical: 'bg-red-50 text-red-700 ring-1 ring-red-200',
     warning: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
     ok: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  }
+
+  const handleFile = (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      alert('Only PDF files are accepted.')
+      return
+    }
+    uploadM.mutate(file)
   }
 
   return (
@@ -323,7 +348,7 @@ function EvidenceTab({ c }: { c: CaseDetailLite }) {
 
       {/* Attached documents */}
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Attached documents</p>
+        <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Attached documents ({documents.length})</p>
         {docsLoading ? (
           <div className="flex items-center gap-2 text-xs text-gray-400 py-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
         ) : docsError ? (
@@ -346,6 +371,76 @@ function EvidenceTab({ c }: { c: CaseDetailLite }) {
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      {/* Upload section */}
+      <div className="border border-gray-200 rounded-xl p-4">
+        <h4 className="text-sm font-semibold text-gray-800 mb-3">Upload document</h4>
+        <span className="block text-xs text-gray-400 mb-3">
+          PDF only — automatically analyzed for evidence findings on upload
+        </span>
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault()
+            setDragOver(false)
+            const f = e.dataTransfer.files[0]
+            if (f) handleFile(f)
+          }}
+          className={`border-2 border-dashed rounded-lg px-6 py-5 text-center transition ${
+            dragOver
+              ? 'border-[#FE017D] bg-pink-50/40'
+              : 'border-gray-200 bg-gray-50'
+          }`}
+        >
+          <UploadCloud className="w-6 h-6 mx-auto text-gray-400 mb-2" />
+          <p className="text-sm text-gray-600">
+            Drag a PDF here, or{' '}
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploadM.isPending}
+              className="text-[#FE017D] hover:underline font-medium disabled:opacity-50"
+            >
+              browse
+            </button>
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            Uploads as supporting document
+          </p>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="hidden"
+            disabled={uploadM.isPending}
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) handleFile(f)
+              e.target.value = ''
+            }}
+          />
+          {uploadM.isPending && (
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Uploading and analyzing…
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-[#FE017D] h-full rounded-full transition-all duration-500 animate-pulse"
+                  style={{ width: '75%' }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        {uploadM.isError && (
+          <p className="mt-2 text-xs text-red-600">
+            Upload failed: {(uploadM.error as Error)?.message ?? 'unknown error'}
+          </p>
         )}
       </div>
     </div>

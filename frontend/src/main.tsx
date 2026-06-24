@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
-import DemoGate from './DemoGate'
+import LoginPage from './pages/LoginPage'
+import { JWT_TOKEN_KEY } from './api/client'
 import './index.css'
 
 const qc = new QueryClient({
@@ -11,12 +12,31 @@ const qc = new QueryClient({
   },
 })
 
+function Root() {
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem(JWT_TOKEN_KEY))
+
+  useEffect(() => {
+    // Update auth state if token changes (e.g., logout on 401)
+    const handleStorageChange = () => {
+      setIsAuthenticated(!!localStorage.getItem(JWT_TOKEN_KEY))
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
+  return (
+    <QueryClientProvider client={qc}>
+      {isAuthenticated ? (
+        <App />
+      ) : (
+        <LoginPage onSuccess={() => setIsAuthenticated(true)} />
+      )}
+    </QueryClientProvider>
+  )
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <QueryClientProvider client={qc}>
-      <DemoGate>
-        <App />
-      </DemoGate>
-    </QueryClientProvider>
+    <Root />
   </React.StrictMode>,
 )

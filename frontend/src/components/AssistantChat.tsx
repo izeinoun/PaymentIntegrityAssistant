@@ -16,7 +16,9 @@ import DOMPurify from 'dompurify'
 const HTML_CARD = /<(div|table|section|article|figure|main|header|h[1-6])[\s/>]/i
 import { Bot, Send, Wrench, AlertTriangle, Loader2 } from 'lucide-react'
 import { api } from '../api'
-import { API_BASE_URL, ACTOR_KEY, DEMO_TOKEN_KEY } from '../api/client'
+import { JWT_TOKEN_KEY } from '../api/client'
+import { API_BASE_URL } from '../config/appUrls'
+
 import Launchpad from './Launchpad'
 import ViewSurface from './ViewSurface'
 import type { Directive, CaseDetailLite } from '../api/types'
@@ -120,11 +122,9 @@ export default function AssistantChat() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // SSE uses fetch directly, bypassing the axios interceptor — attach
-          // the same identity + gate headers here.
-          'X-User-Id': localStorage.getItem(ACTOR_KEY) ?? '',
-          ...(localStorage.getItem(DEMO_TOKEN_KEY)
-            ? { Authorization: `Bearer ${localStorage.getItem(DEMO_TOKEN_KEY)}` }
+          // JWT token authentication — SSE uses fetch directly, so attach token manually
+          ...(localStorage.getItem(JWT_TOKEN_KEY)
+            ? { Authorization: `Bearer ${localStorage.getItem(JWT_TOKEN_KEY)}` }
             : {}),
         },
         body: JSON.stringify({ messages: next, context }),
@@ -247,7 +247,7 @@ export default function AssistantChat() {
   async function runCockpitAction(req: CockpitActionReq) {
     if (loading) return
     setPendingInput(null)  // a new action supersedes any unanswered prompt
-    const actorId = localStorage.getItem(ACTOR_KEY) ?? ''
+    const actorId = localStorage.getItem('assistant_user_id') ?? ''
     const exec = async (fn: () => Promise<void>, done: string) => {
       setError(''); setLoading(true)
       try { await fn(); narrate(done); refreshCockpit() }

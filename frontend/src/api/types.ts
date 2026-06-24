@@ -107,9 +107,9 @@ export interface BriefingPersonalStats {
 }
 
 export interface BriefingTrendMetric {
-  current: number | float
-  previous: number | float
-  percent_change: number | float
+  current: number
+  previous: number
+  percent_change: number
 }
 
 export interface BriefingTrends {

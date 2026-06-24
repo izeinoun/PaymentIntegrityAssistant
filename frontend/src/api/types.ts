@@ -91,6 +91,13 @@ export interface DocumentLite {
   kind?: string | null
   uploaded_at?: string | null
 }
+export interface EvidenceFinding {
+  id: string
+  code?: string | null
+  severity: 'critical' | 'warning' | 'ok'
+  title?: string | null
+  body: string
+}
 
 // Mirrors the parts of CaseDetail the cockpit renders. Findings live under
 // claim.findings; provider is rendering_provider / provider_org_name.

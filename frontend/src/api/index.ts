@@ -1,6 +1,6 @@
 import { client } from './client'
 import type {
-  User, CaseListResponse, CaseDetailLite, MyDashboard, DocumentLite, NoteLite,
+  User, CaseListResponse, CaseDetailLite, MyDashboard, DocumentLite, NoteLite, EvidenceFinding,
 } from './types'
 
 // Worklist scope → the unified /api/cases assignee filter (same mapping PayGuard
@@ -64,6 +64,12 @@ export const api = {
   // Case-level documents (Evidence tab). caseUuid is CaseDetail.case_id.
   async caseDocuments(caseUuid: string): Promise<DocumentLite[]> {
     const { data } = await client.get<DocumentLite[]>('/api/documents', { params: { case_id: caseUuid } })
+    return data
+  },
+
+  // Evidence findings from document analysis. claimId is CaseDetail.claim.id.
+  async caseEvidenceFindings(claimId: string): Promise<EvidenceFinding[]> {
+    const { data } = await client.get<EvidenceFinding[]>(`/api/claims/${claimId}/evidence-findings`)
     return data
   },
 

@@ -265,79 +265,58 @@ function NotesTab({ caseId, notes }: { caseId: number; notes: { id?: string; bod
   )
 }
 
-// Compact, generic renderer for a finding's evidence_json — surfaces the key
-// components (codes, amounts, dates) without assuming a per-detector schema.
-function fmtEvidenceVal(v: any): string {
-  if (v == null) return ''
-  if (Array.isArray(v)) {
-    return v.map((it) => {
-      if (it && typeof it === 'object') {
-        if (it.code) return it.reason ? `${it.code} (${it.reason})` : String(it.code)
-        if (it.line_number != null) return `line ${it.line_number}`
-        const scalars = Object.values(it).filter((x) => x != null && typeof x !== 'object')
-        return scalars.slice(0, 2).map(String).join(' ')
-      }
-      return String(it)
-    }).filter(Boolean).join('; ')
-  }
-  if (typeof v === 'object') return Object.keys(v).slice(0, 4).join(', ')
-  return String(v)
-}
-function evidencePairs(json?: string | null): { key: string; value: string }[] {
-  if (!json) return []
-  let d: any
-  try { d = JSON.parse(json) } catch { return [] }
-  if (!d || typeof d !== 'object') return []
-  const out: { key: string; value: string }[] = []
-  for (const [k, v] of Object.entries(d)) {
-    if (v == null || (Array.isArray(v) && v.length === 0)) continue
-    const val = fmtEvidenceVal(v)
-    if (!val) continue
-    out.push({ key: k.replace(/_/g, ' '), value: val.length > 140 ? val.slice(0, 140) + '…' : val })
-  }
-  return out
-}
 
 function EvidenceTab({ c }: { c: CaseDetailLite }) {
   const caseUuid = c.case_id ?? null
-  const findings = c.claim?.findings ?? []
-  const { data, isLoading, error } = useQuery({
+  const claimId = c.claim?.id ?? null
+  const { data: docs, isLoading: docsLoading, error: docsError } = useQuery({
     queryKey: ['cockpit-docs', caseUuid],
     queryFn: () => api.caseDocuments(caseUuid as string),
     enabled: !!caseUuid,
   })
-  const docs = data ?? []
+  const { data: findings, isLoading: findingsLoading, error: findingsError } = useQuery({
+    queryKey: ['cockpit-evidence-findings', claimId],
+    queryFn: () => api.caseEvidenceFindings(claimId as string),
+    enabled: !!claimId,
+  })
+  const documents = docs ?? []
+  const evidenceFindings = findings ?? []
+
+  const SEVERITY_STYLES: Record<string, string> = {
+    critical: 'bg-red-50 text-red-700 ring-1 ring-red-200',
+    warning: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+    ok: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  }
 
   return (
     <div className="space-y-4">
-      {/* Findings + their key evidence */}
+      {/* AI evidence findings */}
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Evidence findings ({findings.length})</p>
-        {!findings.length ? <p className="text-sm text-gray-400">No findings.</p> : (
+        <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Evidence findings ({evidenceFindings.length})</p>
+        {findingsLoading ? (
+          <div className="flex items-center gap-2 text-xs text-gray-400 py-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
+        ) : findingsError ? (
+          <p className="text-sm text-red-600">Failed to load evidence findings.</p>
+        ) : evidenceFindings.length === 0 ? (
+          <p className="text-sm text-gray-400">{documents.length === 0 ? 'Attach documents to see evidence findings.' : 'No evidence findings found.'}</p>
+        ) : (
           <ul className="space-y-2">
-            {findings.map((f, i) => {
-              const pairs = evidencePairs(f.evidence_json)
-              return (
-                <li key={f.id ?? i} className="border border-gray-100 rounded-lg p-2.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 font-mono">{f.detector_code || f.finding_type || '—'}</span>
-                    {f.confidence_score != null && <span className="text-[11px] text-gray-400">{Math.round(f.confidence_score * 100)}% conf</span>}
-                    {f.overpayment_amount != null && f.overpayment_amount > 0 && <span className="text-[11px] font-semibold text-gray-700">{money(f.overpayment_amount)}</span>}
+            {evidenceFindings.map((f) => (
+              <li key={f.id} className="border border-gray-100 rounded-lg p-2.5">
+                <div className="flex items-start gap-3">
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide flex-shrink-0 ${SEVERITY_STYLES[f.severity] ?? SEVERITY_STYLES.warning}`}>
+                    {f.severity}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span className="font-medium text-gray-900">{f.title ?? 'Evidence finding'}</span>
+                      {f.code && <span className="text-xs text-gray-500 font-mono">{f.code}</span>}
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1 whitespace-pre-line">{f.body}</p>
                   </div>
-                  {f.description && <p className="text-sm text-gray-700 mt-1">{f.description}</p>}
-                  {!!pairs.length && (
-                    <dl className="mt-1.5 grid grid-cols-[auto,1fr] gap-x-3 gap-y-0.5">
-                      {pairs.map((p) => (
-                        <div key={p.key} className="contents">
-                          <dt className="text-[11px] text-gray-400 capitalize">{p.key}</dt>
-                          <dd className="text-[11px] text-gray-700 font-mono break-words">{p.value}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  )}
-                </li>
-              )
-            })}
+                </div>
+              </li>
+            ))}
           </ul>
         )}
       </div>
@@ -345,15 +324,15 @@ function EvidenceTab({ c }: { c: CaseDetailLite }) {
       {/* Attached documents */}
       <div>
         <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Attached documents</p>
-        {isLoading ? (
+        {docsLoading ? (
           <div className="flex items-center gap-2 text-xs text-gray-400 py-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
-        ) : error ? (
+        ) : docsError ? (
           <p className="text-sm text-red-600">Failed to load documents.</p>
-        ) : !docs.length ? (
+        ) : !documents.length ? (
           <p className="text-sm text-gray-400">No documents attached.</p>
         ) : (
           <ul className="space-y-1.5">
-            {docs.map((d) => (
+            {documents.map((d) => (
               <li key={d.id} className="flex items-center justify-between gap-2 text-sm border border-gray-100 rounded-lg px-2.5 py-2">
                 <span className="min-w-0">
                   <span className="text-gray-800 truncate">{d.filename}</span>

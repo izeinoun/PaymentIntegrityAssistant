@@ -42,7 +42,9 @@ export default function WorklistMini({ params, onOpenCase }: Props) {
     queryFn: () => api.listCases(q),
   })
 
-  const items = data?.items ?? []
+  // Analysts work open cases only — never list closed ones (the API already
+  // excludes them; this is a defensive filter so a closed case never slips in).
+  const items = (data?.items ?? []).filter((c) => !c.status.startsWith('closed'))
   // Deep-link to the matching PayGuard worklist stage where it maps cleanly.
   const payguardHref = appUrl('payguard', params.scope === 'all' ? 'worklist?stage=all' : 'worklist')
 
@@ -95,6 +97,8 @@ export default function WorklistMini({ params, onOpenCase }: Props) {
           </table>
         </div>
       )}
+
+      <p className="mt-2 text-[11px] text-gray-400">Closed cases are not shown — open cases only.</p>
     </div>
   )
 }

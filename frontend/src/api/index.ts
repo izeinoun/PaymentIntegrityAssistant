@@ -86,6 +86,34 @@ export const api = {
   async rerunDetectors(caseId: number): Promise<void> {
     await client.post(`/api/cases/${caseId}/rerun-detectors`)
   },
+
+  // ── Finding dispositions ────────────────────────────────────────────────
+  async acceptFinding(findingId: string): Promise<void> {
+    await client.post(`/api/findings/${findingId}/accept`, {})
+  },
+  async rejectFinding(findingId: string, reason: string): Promise<void> {
+    await client.post(`/api/findings/${findingId}/reject`, { reason })
+  },
+  async adjustFinding(findingId: string, adjustedAmount: number, reason: string): Promise<void> {
+    await client.post(`/api/findings/${findingId}/adjust`, { adjusted_amount: adjustedAmount, reason })
+  },
+
+  // ── Case decisions / supervisor / SIU ───────────────────────────────────
+  async approveCase(caseId: number): Promise<void> {
+    await client.post(`/api/cases/${caseId}/approve`, {})
+  },
+  async rejectCase(caseId: number, reason: string): Promise<void> {
+    await client.post(`/api/cases/${caseId}/reject`, { reason })
+  },
+  async reopenCase(caseId: number, reason: string): Promise<void> {
+    await client.post(`/api/cases/${caseId}/reopen`, { reason })
+  },
+  async adjudicateWithout837(caseId: number): Promise<void> {
+    await client.post(`/api/cases/${caseId}/adjudicate-without-claim`, {})
+  },
+  async siuEscalate(caseUuid: string, reason: string): Promise<void> {
+    await client.post('/api/siu/escalate', { case_id: caseUuid, escalation_reason: reason })
+  },
 }
 
 // Direct download URL for a document (opens the backend stream in a new tab).

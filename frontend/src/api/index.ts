@@ -1,6 +1,6 @@
 import { client } from './client'
 import type {
-  User, CaseListResponse, CaseDetailLite, MyDashboard, DocumentLite, NoteLite, EvidenceFinding,
+  User, CaseListResponse, CaseDetailLite, MyDashboard, DocumentLite, NoteLite, EvidenceFinding, DailyBriefing,
 } from './types'
 
 // Worklist scope → the unified /api/cases assignee filter (same mapping PayGuard
@@ -58,6 +58,11 @@ export const api = {
 
   async myDashboard(period: 'week' | 'month' | 'quarter' = 'month'): Promise<MyDashboard> {
     const { data } = await client.get<MyDashboard>('/api/dashboard/me', { params: { period } })
+    return data
+  },
+
+  async dailyBriefing(period: 'day' | 'week' = 'day'): Promise<DailyBriefing> {
+    const { data } = await client.get<DailyBriefing>('/api/dashboard/briefing', { params: { period } })
     return data
   },
 

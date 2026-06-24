@@ -4,7 +4,7 @@
 // /api/cases (page_size:1 → total).
 import { useQuery } from '@tanstack/react-query'
 import {
-  ListChecks, Eye, AlertTriangle, Inbox, LayoutDashboard, ShieldCheck, Flame,
+  ListChecks, Eye, AlertTriangle, Inbox, LayoutDashboard, ShieldCheck, Flame, Sparkles,
 } from 'lucide-react'
 import { api } from '../api'
 import type { CaseQuery } from '../api'
@@ -19,6 +19,8 @@ type Spec = {
 }
 
 const ANALYST: Spec[] = [
+  { label: 'Daily Briefing', icon: Sparkles,
+    directive: { view: 'briefing', caption: 'Daily Briefing' } },
   { label: 'My cases', icon: ListChecks, countQuery: { scope: 'mine' },
     directive: { view: 'worklist', params: { scope: 'mine' }, caption: 'Your assigned cases' } },
   { label: 'Pending my review', icon: Eye, countQuery: { scope: 'mine', status: 'in_review' },

@@ -14,7 +14,7 @@ export interface User {
 
 // A render directive: which assistant-native view to mount + its params. Emitted
 // by the agent (present_view) or dispatched client-side by a launchpad button.
-export type ViewName = 'worklist' | 'case' | 'my_dashboard'
+export type ViewName = 'worklist' | 'case' | 'my_dashboard' | 'briefing'
 export interface Directive {
   view: ViewName
   params?: Record<string, any>
@@ -97,6 +97,54 @@ export interface EvidenceFinding {
   severity: 'critical' | 'warning' | 'ok'
   title?: string | null
   body: string
+}
+
+export interface BriefingPersonalStats {
+  cases_closed: number
+  dollars_recovered: number
+  current_workload_count: number
+  avg_handle_time_days: number | null
+}
+
+export interface BriefingTrendMetric {
+  current: number | float
+  previous: number | float
+  percent_change: number | float
+}
+
+export interface BriefingTrends {
+  cases_closed_vs_previous: BriefingTrendMetric
+  dollars_recovered_vs_previous: BriefingTrendMetric
+  handle_time_vs_previous: BriefingTrendMetric
+}
+
+export interface BriefingTeamComparison {
+  your_cases_closed: number
+  team_avg_cases_closed: number
+  your_dollars_recovered: number
+  team_avg_dollars_recovered: number
+  your_handle_time: number
+  team_avg_handle_time: number
+}
+
+export interface BriefingHighValueCase {
+  case_id: number
+  case_number: string
+  priority_score: number
+  amount_at_risk: number | null
+  status: string
+  assignee?: { id: string; full_name: string } | null
+  claim?: {
+    member?: { name?: string | null } | null
+    rendering_provider?: { name?: string | null } | null
+  } | null
+}
+
+export interface DailyBriefing {
+  personal_stats: BriefingPersonalStats
+  trends: BriefingTrends
+  team_comparison: BriefingTeamComparison
+  high_value_cases: BriefingHighValueCase[]
 }
 
 // Mirrors the parts of CaseDetail the cockpit renders. Findings live under

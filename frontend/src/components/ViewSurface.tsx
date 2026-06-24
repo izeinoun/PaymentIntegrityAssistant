@@ -6,6 +6,7 @@ import type { Directive } from '../api/types'
 import WorklistMini from './views/WorklistMini'
 import CaseCockpit from './views/CaseCockpit'
 import MyDashboardView from './views/MyDashboardView'
+import BriefingLandingPage from './views/BriefingLandingPage'
 import type { CockpitActionReq } from '../lib/nextAction'
 
 interface Props {
@@ -21,6 +22,7 @@ const TITLES: Record<string, string> = {
   worklist: 'Cases',
   case: 'Case',
   my_dashboard: 'My dashboard',
+  briefing: 'Daily Briefing',
 }
 
 export default function ViewSurface({ directive, onOpenCase, onClose, onCollapse, onAction, busy }: Props) {
@@ -47,7 +49,7 @@ export default function ViewSurface({ directive, onOpenCase, onClose, onCollapse
           </button>
         </div>
       </div>
-      <div className="p-4">
+      <div className={view === 'briefing' ? '' : 'p-4'}>
         {view === 'worklist' && <WorklistMini params={params} onOpenCase={onOpenCase} />}
         {view === 'case' && (
           Number.isFinite(caseId)
@@ -55,7 +57,8 @@ export default function ViewSurface({ directive, onOpenCase, onClose, onCollapse
             : <p className="text-sm text-gray-400">No case id provided.</p>
         )}
         {view === 'my_dashboard' && <MyDashboardView params={params} />}
-        {!['worklist', 'case', 'my_dashboard'].includes(view) && (
+        {view === 'briefing' && <BriefingLandingPage />}
+        {!['worklist', 'case', 'my_dashboard', 'briefing'].includes(view) && (
           <p className="text-sm text-gray-400">Unknown view: {String(view)}</p>
         )}
       </div>

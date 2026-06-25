@@ -2,9 +2,9 @@ import { AlertCircle, CheckCircle } from 'lucide-react'
 
 export default function EnvironmentBanner() {
   const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
-  const isProd = isProduction || process.env.VITE_ENVIRONMENT === 'production'
+  const isProd = isProduction || import.meta.env.VITE_ENVIRONMENT === 'production'
 
-  if (!isProd && process.env.VITE_ENVIRONMENT !== 'production') {
+  if (!isProd && import.meta.env.VITE_ENVIRONMENT !== 'production') {
     // Development
     return (
       <div className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 flex items-center justify-between">

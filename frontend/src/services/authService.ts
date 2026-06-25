@@ -17,8 +17,6 @@ export interface User {
   email: string
 }
 
-export type { User }
-
 interface TokenResponse {
   access_token: string
   user_id: string
@@ -27,7 +25,7 @@ interface TokenResponse {
 }
 
 const REFRESH_INTERVAL_MS = 11 * 60 * 60 * 1000 // 11 hours
-let refreshTimeoutId: NodeJS.Timeout | null = null
+let refreshTimeoutId: ReturnType<typeof setTimeout> | null = null
 let broadcastChannel: BroadcastChannel | null = null
 
 /**

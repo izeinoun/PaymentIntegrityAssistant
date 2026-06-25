@@ -8,6 +8,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import DOMPurify from 'dompurify'
+import { sanitizeAssistantOutput } from '../lib/sanitizeAssistantOutput'
 
 // A message is an "HTML card" when it leads with a block-level HTML element.
 // Such content is rendered as sanitized HTML (browsers parse it leniently),
@@ -16,7 +17,6 @@ import DOMPurify from 'dompurify'
 const HTML_CARD = /<(div|table|section|article|figure|main|header|h[1-6])[\s/>]/i
 import { Bot, Send, Wrench, AlertTriangle, Loader2 } from 'lucide-react'
 import { api } from '../api'
-import { JWT_TOKEN_KEY } from '../api/client'
 import { API_BASE_URL } from '../config/appUrls'
 
 import Launchpad from './Launchpad'
@@ -120,12 +120,9 @@ export default function AssistantChat() {
     try {
       const res = await fetch(`${API_BASE_URL}/api/assistant/chat/stream`, {
         method: 'POST',
+        credentials: 'include', // Send httpOnly cookies
         headers: {
           'Content-Type': 'application/json',
-          // JWT token authentication — SSE uses fetch directly, so attach token manually
-          ...(localStorage.getItem(JWT_TOKEN_KEY)
-            ? { Authorization: `Bearer ${localStorage.getItem(JWT_TOKEN_KEY)}` }
-            : {}),
         },
         body: JSON.stringify({ messages: next, context }),
       })
@@ -247,7 +244,7 @@ export default function AssistantChat() {
   async function runCockpitAction(req: CockpitActionReq) {
     if (loading) return
     setPendingInput(null)  // a new action supersedes any unanswered prompt
-    const actorId = localStorage.getItem('assistant_user_id') ?? ''
+    const actorId = sessionStorage.getItem('assistant_user_id') ?? ''
     const exec = async (fn: () => Promise<void>, done: string) => {
       setError(''); setLoading(true)
       try { await fn(); narrate(done); refreshCockpit() }
@@ -511,13 +508,16 @@ function UserBubble({ text }: { text: string }) {
 }
 
 function AssistantBubble({ text }: { text: string }) {
+  // Remove markup that shouldn't be visible to users
+  const cleanedText = sanitizeAssistantOutput(text)
+
   return (
     <div className="max-w-[92%] bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-3 py-2 text-sm text-gray-800 prose prose-sm max-w-none prose-p:my-1 prose-headings:my-1.5 prose-ul:my-1 prose-li:my-0">
-      {HTML_CARD.test(text)
-        ? <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(text) }} />
+      {HTML_CARD.test(cleanedText)
+        ? <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(cleanedText) }} />
         : (
           /* remark-gfm → GFM tables/strikethrough; rehype-raw → inline HTML like <br> */
-          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{text}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{cleanedText}</ReactMarkdown>
         )}
     </div>
   )

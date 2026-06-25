@@ -5,7 +5,7 @@
 // still live on the full PayGuard page.
 import { useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, Loader2, Download, Send, ChevronDown, Check, UploadCloud } from 'lucide-react'
+import { ExternalLink, Loader2, Download, Send, ChevronDown, Check, UploadCloud, Lightbulb } from 'lucide-react'
 import { api, documentDownloadUrl } from '../../api'
 import type { CaseDetailLite, CaseAction, FindingLite } from '../../api/types'
 import { appUrl } from '../../config/appUrls'
@@ -106,6 +106,23 @@ export default function CaseCockpit({ caseId, onAction, busy }: Props) {
           <p className="text-lg font-bold text-gray-900">{money(c.amount_at_risk)}</p>
         </div>
       </div>
+
+      {/* Suggested decision banner */}
+      {c.suggested_decision && (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 flex items-start gap-2.5">
+          <Lightbulb className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1 text-sm">
+            <p className="text-green-900 font-medium">
+              <span className="font-semibold">Suggested: {c.suggested_decision.recommendation}</span>
+              {' '}
+              <span className="text-green-700">
+                · confidence {Math.round(c.suggested_decision.confidence * 100)}%
+              </span>
+            </p>
+            <p className="text-green-700 text-xs mt-1">{c.suggested_decision.reason}</p>
+          </div>
+        </div>
+      )}
 
       {/* Workflow lifecycle */}
       {c.guidance && c.guidance.lifecycle.length > 0 && (

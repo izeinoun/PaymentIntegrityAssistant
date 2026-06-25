@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AlertCircle, Lock, User } from 'lucide-react'
-import { client, JWT_TOKEN_KEY } from '../api/client'
+import { login } from '../services/authService'
 
 export default function LoginPage({ onSuccess }: { onSuccess: () => void }) {
   const [username, setUsername] = useState('')
@@ -14,17 +14,11 @@ export default function LoginPage({ onSuccess }: { onSuccess: () => void }) {
     setError(null)
 
     try {
-      const response = await client.post('/api/auth/login', { username, password })
-      const { access_token, user_id } = response.data
-
-      // Store JWT token
-      localStorage.setItem(JWT_TOKEN_KEY, access_token)
-      // Also store user_id for UI purposes
-      localStorage.setItem('assistant_user_id', user_id)
-
+      const user = await login(username, password)
+      sessionStorage.setItem('assistant_user_id', user.user_id)
       onSuccess()
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed. Please try again.')
+      setError(err.message || 'Login failed. Please try again.')
       setPassword('')
     } finally {
       setIsLoading(false)
@@ -82,7 +76,7 @@ export default function LoginPage({ onSuccess }: { onSuccess: () => void }) {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password (use username as password for demo)"
+                  placeholder="Enter your password"
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={isLoading}
                   required
@@ -98,10 +92,6 @@ export default function LoginPage({ onSuccess }: { onSuccess: () => void }) {
             >
               {isLoading ? 'Logging in…' : 'Login'}
             </button>
-
-            <p className="text-xs text-gray-500 text-center mt-4">
-              Demo credentials: username = password
-            </p>
           </form>
         </div>
       </div>

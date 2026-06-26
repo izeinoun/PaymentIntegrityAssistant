@@ -162,7 +162,7 @@ export interface CaseDetailLite {
     id?: string
     total_billed?: number | null
     total_paid?: number | null
-    member?: { name?: string | null } | null
+    member?: { name?: string | null; member_id?: string | null } | null
     rendering_provider?: { name?: string | null } | null
     provider_org_name?: string | null
     findings?: FindingLite[]

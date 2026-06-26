@@ -21,6 +21,7 @@ import { API_BASE_URL } from '../config/appUrls'
 
 import Launchpad from './Launchpad'
 import ViewSurface from './ViewSurface'
+import LeftNav from './LeftNav'
 import type { Directive, CaseDetailLite } from '../api/types'
 import type { CockpitActionReq } from '../lib/nextAction'
 
@@ -94,11 +95,6 @@ export default function AssistantChat() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, stream, awaiting, confirming, error, loading])
-
-  // A view surfaces at the TOP of the column — bring it into view when it changes.
-  useEffect(() => {
-    if (activeView) scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [activeView])
 
   // A cockpit action needs a typed amount/reason — bring the prompt + input into
   // view and focus it so it's clear the case is waiting on the chat box.
@@ -303,18 +299,41 @@ export default function AssistantChat() {
   // chips run inline (reading caseUuid/claimTotal from the cockpit's cache);
   // analytical chips just ask the agent.
   function sendPrompt(text: string) { if (!loading) send([...messages, { role: 'user', content: text }]) }
+
+  // Handle left nav quick action navigation
+  function handleNavAction(action: string) {
+    const prompts: Record<string, string> = {
+      'high-priority': 'Show me my high-priority cases',
+      'pending-review': 'Show me cases pending my review',
+      'my-cases': 'Show my cases',
+    }
+    if (prompts[action]) sendPrompt(prompts[action])
+  }
   function caseActionReq(kind: string, label: string): CockpitActionReq {
     const caseId = Number(context.active_case_id)
     const c = qc.getQueryData<CaseDetailLite>(['cockpit-case', caseId])
     return { kind, caseId, caseUuid: c?.case_id, label, claimTotal: c?.claim?.total_billed }
   }
+  // Build dynamic quick actions based on context
   const caseQuickActions = [
-    { label: 'Probability of Recovery', run: () => sendPrompt('What is the probability of recovery on this case, and what is driving it?') },
-    { label: 'Start Review', run: () => runCockpitAction(caseActionReq('start_review', 'Start review')) },
+    { label: 'My Case List', run: () => dispatchView({ view: 'worklist', params: { scope: 'mine' }, caption: 'Your assigned cases' }) },
+    { label: 'Contact Provider', run: () => sendPrompt('Help me draft a message to send to the provider about this case.') },
     { label: 'Escalate', run: () => runCockpitAction(caseActionReq('escalate', 'Escalate')) },
-    { label: 'Send to SIU', run: () => runCockpitAction(caseActionReq('send_to_siu', 'Send to SIU')) },
-    { label: 'Ask Provider', run: () => sendPrompt('Help me draft a question to the provider about this case.') },
+    { label: 'Show Working Case', run: () => { /* Scroll to case view */ scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }) } },
   ]
+
+  // Add "Member Record" button if we have an active case with a member
+  const caseId = Number(context.active_case_id)
+  const caseData = caseId ? qc.getQueryData<CaseDetailLite>(['cockpit-case', caseId]) : null
+  const memberName = caseData?.claim?.member?.name
+  const memberNumber = caseData?.claim?.member?.member_id
+
+  if (memberName && memberNumber) {
+    caseQuickActions.push({
+      label: 'Member Record',
+      run: () => sendPrompt(`Show me ${memberName}'s ClearLink record (demographics, active diagnoses, medications, recent visits). Use member ID: ${memberNumber}`),
+    })
+  }
 
   const empty = messages.length === 0 && stream.length === 0 && !loading && !error
 
@@ -332,6 +351,7 @@ export default function AssistantChat() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
+      <LeftNav onNavigate={handleNavAction} />
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-3">
           {/* Anticipatory launchpad — always available at the top. */}
@@ -440,11 +460,11 @@ export default function AssistantChat() {
           </div>
         </div>
 
-      {/* Input */}
-      <div className="border-t border-gray-200 bg-white">
+      {/* Input — floating above the bottom with elevated styling */}
+      <div className="bg-gradient-to-b from-transparent via-white/80 to-white pb-4 pt-8">
         {/* Case quick-actions — shown above the prompt box while a case is open. */}
         {activeView?.view === 'case' && context.active_case_id && (
-          <div className="max-w-3xl mx-auto px-4 pt-2.5 flex flex-wrap gap-1.5">
+          <div className="max-w-2xl mx-auto px-4 mb-2 flex flex-wrap gap-1.5">
             {caseQuickActions.map((q) => (
               <button key={q.label} onClick={q.run} disabled={loading}
                 className="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-700 hover:border-[#FE017D]/40 hover:bg-[#FE017D]/5 disabled:opacity-40 transition-colors">
@@ -453,7 +473,7 @@ export default function AssistantChat() {
             ))}
           </div>
         )}
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-end gap-2">
+        <div className="max-w-2xl mx-auto px-4 flex items-end gap-2.5">
           <textarea
             ref={inputRef}
             value={input}
@@ -462,11 +482,11 @@ export default function AssistantChat() {
             placeholder={pendingInput ? 'Type your answer…' : 'Ask about cases, claims, providers, or metrics…'}
             rows={1}
             disabled={loading}
-            className="flex-1 resize-none text-sm border border-gray-200 rounded-lg px-3 py-2 max-h-40 focus:outline-none focus:ring-2 focus:ring-[#FE017D]/30 focus:border-[#FE017D]/40 disabled:bg-gray-50"
+            className="flex-1 resize-none text-sm border border-gray-200 rounded-2xl px-4 py-3 max-h-40 focus:outline-none focus:ring-2 focus:ring-[#FE017D]/30 focus:border-[#FE017D] disabled:bg-gray-50 bg-white shadow-sm"
           />
           <button onClick={submit} disabled={loading || !input.trim()}
-            className="p-2 rounded-lg bg-[#FE017D] text-white disabled:opacity-40 hover:bg-[#d4016a] transition-colors">
-            <Send className="w-4 h-4" />
+            className="flex-shrink-0 w-10 h-10 rounded-full bg-[#FE017D] text-white disabled:opacity-40 hover:bg-[#d4016a] active:scale-95 transition-all shadow-md hover:shadow-lg flex items-center justify-center">
+            <Send className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -524,13 +544,18 @@ function AssistantBubble({ text }: { text: string }) {
 }
 
 function ToolLine({ name, status, error }: { name: string; status: 'running' | 'done' | 'error'; error?: string }) {
+  // Determine label and styling
+  const isError = status === 'error'
+  const isRunning = status === 'running'
+  const label = isRunning ? 'Calling' : isError ? 'Failed to contact' : 'Called'
+
   return (
     <div className="flex items-center gap-2 text-[11px] text-gray-400 pl-1" title={error || ''}>
-      {status === 'running'
+      {isRunning
         ? <Loader2 className="w-3 h-3 animate-spin" />
-        : <Wrench className={`w-3 h-3 ${status === 'error' ? 'text-red-400' : ''}`} />}
-      <span className={status === 'error' ? 'text-red-400' : ''}>
-        {status === 'running' ? 'Calling' : status === 'error' ? 'Failed' : 'Used'} <span className="font-mono">{name}</span>
+        : <Wrench className={`w-3 h-3 ${isError ? 'text-red-400' : ''}`} />}
+      <span className={isError ? 'text-red-400' : ''}>
+        {label} <span className="font-mono">{name}</span>
       </span>
     </div>
   )

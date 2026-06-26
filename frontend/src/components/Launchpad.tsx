@@ -21,7 +21,7 @@ const ANALYST: Spec[] = [
   { label: 'Daily Briefing', icon: Sparkles,
     directive: { view: 'briefing', caption: 'Daily Briefing' } },
   { label: 'My cases', icon: ListChecks, countQuery: { scope: 'mine' },
-    directive: { view: 'worklist', params: { scope: 'mine' }, caption: 'Your assigned cases' } },
+    directive: { view: 'worklist', params: { scope: 'mine', page_size: 10 }, caption: 'Your assigned cases' } },
   { label: 'Pending my review', icon: Eye, countQuery: { scope: 'mine', status: 'in_review' },
     directive: { view: 'worklist', params: { scope: 'mine', status: 'in_review' }, caption: 'Your cases in review' } },
   { label: 'Jeopardy', icon: AlertTriangle, countQuery: { scope: 'mine', overdue: true },

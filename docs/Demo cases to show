@@ -1,0 +1,3 @@
+OPA-2026-00009: show it in Assistant - prompt:
+    "case OPA-2026-00009 has a large reclaim amount. but it has a low confidence 9% . why so low when DET-18 is triggered?"
+

@@ -486,7 +486,7 @@ export default function AssistantChat() {
           />
           <button onClick={submit} disabled={loading || !input.trim()}
             className="flex-shrink-0 w-10 h-10 rounded-full bg-[#FE017D] text-white disabled:opacity-40 hover:bg-[#d4016a] active:scale-95 transition-all shadow-md hover:shadow-lg flex items-center justify-center">
-            <Send className="w-5 h-5" />
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </button>
         </div>
       </div>
